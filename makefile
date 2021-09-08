@@ -9,24 +9,25 @@ RM = rm -rf
 
 IMG = boot.img
 BOCHS_CONFIG = bochsrc
-CFLAGS = -Wall -O2 -nostdlib -nostdinc
+CFLAGS = -Wall -O2 -nostdlib -nostdinc -Wbuiltin-declaration-mismatch
+INCLUDEPATH = -I./bin
 LDFLAGS = -Ttext 0xc0001500 -e main
-DDFLAGS = bs=512 conv=notrunc of=$(IMG)
+DDFLAGS = bs=512 conv=notrunc of=bin/$(IMG)
 
-VPATH = kernel
+VPATH = kernel 
 
 K := $(foreach exec,$(EXECUTABLES),\
         $(if $(shell which $(exec)),,$(error "No $(exec) in PATH")))
 
-bochs:dirs boot.img
+bochs:dirs bin/boot.img
 	$(BOCHS) -f $(BOCHS_CONFIG)
 	# qemu -hda boot.img
 	
-$(IMG):bin/mbr.bin bin/loader.bin bin/kernel.bin
+bin/$(IMG):bin/mbr.bin bin/loader.bin bin/kernel.bin
 	dd if=/dev/zero  count=131040 $(DDFLAGS)
 	dd if=$< count=1 $(DDFLAGS)
 	dd if=bin/loader.bin count=4 seek=1 $(DDFLAGS)
-	dd if=bin/kernel.bin count=20 seek=5 $(DDFLAGS)
+	dd if=bin/kernel.bin count=200 seek=5 $(DDFLAGS)
 
 
 #-------------------objs-------------------
