@@ -16,7 +16,11 @@ LOADER_BASE_ADDR equ 0x900
 VIDEO_BASE_ADDR equ 0xb8000
 KERNEL_SPACE_ADDR equ 0xc0000000
 
-SECTION LOADER vstart=LOADER_BASE_ADDR
+[bits 16]
+;SECTION LOADER vstart=LOADER_BASE_ADDR
+section .text
+global _start
+_start:
 	;将0x900以下作为栈空间，方便后续的c内核代码使用
 	mov sp,LOADER_BASE_ADDR
 	mov bp,LOADER_BASE_ADDR
@@ -112,7 +116,9 @@ p_mode:
 	mov cx,strlen3
 	call print_str_p
 
-	jmp $
+	;jump to c function boot. see boot/boot.c
+	extern boot
+	call boot
 
 ;si:字符串起始地址
 ;bx:字符输出位置

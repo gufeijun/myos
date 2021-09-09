@@ -68,7 +68,7 @@ static inline void* memset(void* addr, uint8_t c, size_t n) {
  * @brief get the length of the arguement @str
  * @return length of @str
  */
-static inline size_t strlen(char* str) {
+static inline size_t strlen(const char* str) {
     size_t i = 0;
     while (str[i++])
         ;

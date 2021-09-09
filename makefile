@@ -1,4 +1,4 @@
-EXECUTABLES := i386-elf-gcc i386-elf-ld nasm dd bochs
+EXECUTABLES := i386-elf-gcc i386-elf-ld nasm dd bochs objcopy
 OUT_DIR = obj bin
 
 BOCHS = bochs
@@ -6,11 +6,12 @@ CC = i386-elf-gcc
 LD = i386-elf-ld
 NASM = nasm
 RM = rm -rf
+OBJCOPY = objcopy
 
 IMG = boot.img
 BOCHS_CONFIG = bochsrc
-CFLAGS = -Wall -O2 -nostdlib -nostdinc -Wbuiltin-declaration-mismatch
-INCLUDEPATH = -I./bin
+CFLAGS = -Wall -O2 -nostdlib -nostdinc -c -fno-builtin -Werror -fno-PIC -fno-stack-protector
+INCLUDEPATH = -I./lib
 LDFLAGS = -Ttext 0xc0001500 -e main
 DDFLAGS = bs=512 conv=notrunc of=bin/$(IMG)
 
@@ -19,13 +20,13 @@ VPATH = kernel
 K := $(foreach exec,$(EXECUTABLES),\
         $(if $(shell which $(exec)),,$(error "No $(exec) in PATH")))
 
-bochs:dirs bin/boot.img
+bochs: bin/boot.img
 	$(BOCHS) -f $(BOCHS_CONFIG)
 	# qemu -hda boot.img
 	
-bin/$(IMG):bin/mbr.bin bin/loader.bin bin/kernel.bin
+bin/$(IMG):dirs bin/mbr.bin bin/loader.bin bin/kernel.bin
 	dd if=/dev/zero  count=131040 $(DDFLAGS)
-	dd if=$< count=1 $(DDFLAGS)
+	dd if=bin/mbr.bin count=1 $(DDFLAGS)
 	dd if=bin/loader.bin count=4 seek=1 $(DDFLAGS)
 	dd if=bin/kernel.bin count=200 seek=5 $(DDFLAGS)
 
@@ -34,12 +35,19 @@ bin/$(IMG):bin/mbr.bin bin/loader.bin bin/kernel.bin
 obj/main.o:kernel/main.c
 	$(CC) $< -o $@ $(CFLAGS)
 
+obj/boot.o:boot/boot.c lib/elf.h lib/io.h lib/stdint.h lib/string.h
+	$(CC) -c $< -o  $@ $(INCLUDEPATH) $(CFLAGS) -Os
+
+obj/loader.o:boot/loader.S
+	$(NASM) -o $@ $< -I./boot -f elf
+
 #-------------------bins-------------------
 bin/mbr.bin:boot/mbr.S
 	$(NASM) $< -o $@
 
-bin/loader.bin:boot/loader.S
-	$(NASM) $< -o $@ -I./boot
+bin/loader.bin: obj/loader.o obj/boot.o
+	$(LD) -e _start $^  -o bin/loader.elf -Ttext 0x900 -N
+	$(OBJCOPY) -S -O binary bin/loader.elf bin/loader.bin
 
 bin/kernel.bin:obj/main.o
 	$(LD) $^ -o bin/kernel.bin $(LDFLAGS)
@@ -47,10 +55,11 @@ bin/kernel.bin:obj/main.o
 $(OUT_DIR):
 	@mkdir $(OUT_DIR)
 
-.PHONY:clean dirs cleanobj cleanbin
+.PHONY:clean dirs cleanobj cleanbin img
 dirs: $(OUT_DIR)
 cleanobj:
 	@$(RM) obj
 cleanbin:
 	@$(RM) bin
 clean: cleanobj cleanbin
+img:bin/$(IMG)
