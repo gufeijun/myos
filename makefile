@@ -11,18 +11,20 @@ OBJCOPY = objcopy
 IMG = boot.img
 BOCHS_CONFIG = bochsrc
 CFLAGS = -Wall -O2 -nostdlib -nostdinc -c -fno-builtin -Werror -fno-PIC -fno-stack-protector
-INCLUDEPATH = -I./lib
+INCLUDEPATH = -I./lib -I. -I./kernel/lib
 LDFLAGS = -Ttext 0xc0001500 -e main
 DDFLAGS = bs=512 conv=notrunc of=bin/$(IMG)
 
-VPATH = kernel 
+VPATH = kernel kernel/lib lib
+
+KOBJECTS = main.o print.o
 
 K := $(foreach exec,$(EXECUTABLES),\
         $(if $(shell which $(exec)),,$(error "No $(exec) in PATH")))
 
 bochs: bin/boot.img
 	$(BOCHS) -f $(BOCHS_CONFIG)
-	# qemu -hda boot.img
+	# qemu -hdb bin/boot.img
 	
 bin/$(IMG):dirs bin/mbr.bin bin/loader.bin bin/kernel.bin
 	dd if=/dev/zero  count=131040 $(DDFLAGS)
@@ -32,14 +34,17 @@ bin/$(IMG):dirs bin/mbr.bin bin/loader.bin bin/kernel.bin
 
 
 #-------------------objs-------------------
-obj/main.o:kernel/main.c
-	$(CC) $< -o $@ $(CFLAGS)
+obj/main.o:kernel/main.c kernel/lib/print.h
+	$(CC) $< -o $@ $(CFLAGS) $(INCLUDEPATH)
 
 obj/boot.o:boot/boot.c lib/elf.h lib/io.h lib/stdint.h lib/string.h
-	$(CC) -c $< -o  $@ $(INCLUDEPATH) $(CFLAGS) -Os
+	$(CC)  $< -o  $@ $(INCLUDEPATH) $(CFLAGS) -Os
 
 obj/loader.o:boot/loader.S
 	$(NASM) -o $@ $< -I./boot -f elf
+
+obj/print.o: kernel/lib/print.c kernel/lib/print.h lib/io.h lib/stdint.h
+	$(CC) $< -o $@ $(INCLUDEPATH) $(CFLAGS)
 
 #-------------------bins-------------------
 bin/mbr.bin:boot/mbr.S
@@ -49,7 +54,7 @@ bin/loader.bin: obj/loader.o obj/boot.o
 	$(LD) -e _start $^  -o bin/loader.elf -Ttext 0x900 -N
 	$(OBJCOPY) -S -O binary bin/loader.elf bin/loader.bin
 
-bin/kernel.bin:obj/main.o
+bin/kernel.bin:$(addprefix obj/,$(KOBJECTS))
 	$(LD) $^ -o bin/kernel.bin $(LDFLAGS)
 
 $(OUT_DIR):

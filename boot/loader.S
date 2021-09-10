@@ -21,6 +21,13 @@ KERNEL_SPACE_ADDR equ 0xc0000000
 section .text
 global _start
 _start:
+	;position the cursor on the fifth line
+	mov ah,2
+	mov bh,0
+	mov dh,4
+	mov dl,0
+	int 0x10
+
 	;将0x900以下作为栈空间，方便后续的c内核代码使用
 	mov sp,LOADER_BASE_ADDR
 	mov bp,LOADER_BASE_ADDR
@@ -116,6 +123,8 @@ p_mode:
 	mov cx,strlen3
 	call print_str_p
 
+	mov esp,0xc009f000
+	mov ebp,0xc009f000
 	;jump to c function boot. see boot/boot.c
 	extern boot
 	call boot
