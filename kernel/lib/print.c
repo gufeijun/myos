@@ -1,6 +1,7 @@
 #include "print.h"
 
 #include "io.h"
+#include "stdarg.h"
 #include "stdint.h"
 #include "string.h"
 
@@ -85,4 +86,53 @@ void put_str(char* str) {
     }
 }
 
-void put_int(int num) {}
+void put_int(int num) {
+    // 32-bit integers have up to 10 digits indecimal
+    char buf[11];
+    int i = 10;
+    if (num < 0) {
+        put_char('-');
+        num = 0 - num;
+    }
+    while (num != 0) {
+        buf[--i] = num % 10 + '0';
+        num /= 10;
+    }
+    buf[10] = 0;
+    put_str(buf + i);
+}
+
+void printf(const char* fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+
+loop:
+    if (*fmt != '%') {
+        if (*fmt == '\0') goto end;
+        put_char(*fmt++);
+        goto loop;
+    }
+    switch (*(++fmt)) {
+        case 'd':
+            put_int(va_arg(args, int));
+            break;
+        case 'c':
+            put_char(va_arg(args, int));
+            break;
+        case 's':
+            put_str(va_arg(args, char*));
+            break;
+        case '\0':
+            goto end;
+        case '%':
+            put_char('%');
+            break;
+        default:
+            // can't recognize, using '0' to replace
+            put_char('0');
+    }
+    fmt++;
+    goto loop;
+end:
+    va_end(args);
+}

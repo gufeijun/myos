@@ -1,12 +1,8 @@
 #include "print.h"
 
 int main() {
-    int i;
-    char buf[10] = "hello";
-    for (i = 0; i < 1023; i++) {
-        buf[5] = 0;
-        put_str(buf);
-    }
+    printf("%s's age is %d\n", "jack", 20);
+    // put_int(100);
     while (1)
         ;
     return 0;
