@@ -90,7 +90,7 @@ p_mode:
 	call print_str_p
 
 	;设置页表与页目录表
-	%include "page.S"		
+	%include "page.asm"		
 
 ;-----------------------------------------------------
 ;将显存的基址、GDT_BASE、栈指针放入内核空间，

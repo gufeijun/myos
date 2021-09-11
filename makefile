@@ -1,70 +1,113 @@
-EXECUTABLES := i386-elf-gcc i386-elf-ld nasm dd bochs objcopy
-OUT_DIR = obj bin
+EMPTY					:=
+SPACE					:= ${EMPTY} ${EMPTY}
+MKDIRS 					:= ./obj/ ./obj/boot/ ./bin
+LOADER_BASE_ADDR 		:= 0x900
+IMG 					:= boot.img
 
-BOCHS = bochs
-CC = i386-elf-gcc
-LD = i386-elf-ld
-NASM = nasm
-RM = rm -rf
-OBJCOPY = objcopy
+EXECUTABLES				:= i386-elf-gcc i386-elf-ld nasm dd bochs objcopy
+T := $(foreach exec,$(EXECUTABLES),\
+        $(if $(shell which $(exec)),,$(error "No $(exec) in PATH!")))
 
-IMG = boot.img
-BOCHS_CONFIG = bochsrc
-CFLAGS = -Wall -O2 -nostdlib -nostdinc -c -fno-builtin -Werror -fno-PIC -fno-stack-protector
-INCLUDEPATH = -I./lib -I. -I./kernel/lib
-LDFLAGS = -Ttext 0xc0001500 -e main
+K_DIR_SRC 				:= ./lib/ ./kernel/ ./kernel/lib/
+K_DIR_INC 				:= ./lib/ ./kernel/lib/
+DIR_BIN					:= ./bin/
+DIR_OBJ					:= ./obj/
+DIR_OBJ_BOOT			:= ./obj/boot/
+BOOT_DIR_SRC			:= ./boot/
+BOOT_DIR_INC			:= ./lib/
+BOOT_DIR_INC_ASM		:= ./boot/
+
+NASM 					:= nasm
+LD 						:= i386-elf-ld
+CC 						:= i386-elf-gcc
+OBJCOPY 				:= objcopy
+RM 						:= rm -rf
+BOCHS 					:= bochs
+
+OBJCP_FLAGS				:= -S -O binary
+INCLUDE_PATH			:= ${foreach n,${K_DIR_INC},-I${n}}
+CFLAGS 					:= -Wall -O2 -nostdlib -nostdinc \
+						-fno-builtin  -fno-stack-protector \
+						-fno-PIC -Werror  ${INCLUDE_PATH}
+LFLAGS 					:=
+LDFLAGS 				:= -Ttext 0xc0001500 -e main
 DDFLAGS = bs=512 conv=notrunc of=bin/$(IMG)
 
-VPATH = kernel kernel/lib lib
+vpath 		%.asm		${BOOT_DIR_INC_ASM}
+vpath 		%.bin 		${DIR_BIN}
+vpath 		%.h 		${BOOT_DIR_INC}
+vpath 		%.o 		${DIR_OBJ_BOOT}
+vpath  		%.elf 		${BOOT_BIN}
+vpath 		%.c  		${BOOT_DIR_SRC}
+vpath 		%.img 		${DIR_BIN}
 
-KOBJECTS = main.o print.o
+.PHONY:all
+all:dirs boot.img
 
-K := $(foreach exec,$(EXECUTABLES),\
-        $(if $(shell which $(exec)),,$(error "No $(exec) in PATH")))
-
-bochs: bin/boot.img
-	$(BOCHS) -f $(BOCHS_CONFIG)
-	# qemu -hdb bin/boot.img
-	
-bin/$(IMG):dirs bin/mbr.bin bin/loader.bin bin/kernel.bin
+boot.img:mbr.bin loader.bin kernel.bin
 	dd if=/dev/zero  count=131040 $(DDFLAGS)
 	dd if=bin/mbr.bin count=1 $(DDFLAGS)
 	dd if=bin/loader.bin count=4 seek=1 $(DDFLAGS)
 	dd if=bin/kernel.bin count=200 seek=5 $(DDFLAGS)
 
+# -------------------------------------------------------------------
+#  mbr
+mbr.bin:mbr.asm
+	${NASM} $< -o ${DIR_BIN}$@
 
-#-------------------objs-------------------
-obj/main.o:kernel/main.c kernel/lib/print.h
-	$(CC) $< -o $@ $(CFLAGS) $(INCLUDEPATH)
+# -------------------------------------------------------------------
+#  loader
+NASMFLAG				:= -I${BOOT_DIR_INC_ASM} -f elf
+loader.bin:loader.elf
+	$(OBJCOPY) ${OBJCP_FLAGS} ${DIR_BIN}$< ${DIR_BIN}$@
+loader.elf:loader.o boot.o
+	$(LD) ${DIR_OBJ_BOOT}loader.o ${DIR_OBJ_BOOT}boot.o  -o ${DIR_BIN}loader.elf -e _start -Ttext ${LOADER_BASE_ADDR} -N
+loader.o:loader.asm page.asm
+	${NASM} -o ${DIR_OBJ_BOOT}$@ $<  ${NASMFLAG} 
+boot.o: boot.c elf.h stdint.h io.h string.h
+	${CC} -c -o ${DIR_OBJ_BOOT}$@ $< ${CFLAGS} -Os
 
-obj/boot.o:boot/boot.c lib/elf.h lib/io.h lib/stdint.h lib/string.h
-	$(CC)  $< -o  $@ $(INCLUDEPATH) $(CFLAGS) -Os
+# -------------------------------------------------------------------
+# kernel
+SRC_WITH_PATH			:= ${foreach n,${K_DIR_SRC},${wildcard ${n}*.c}}
+SRC 					:= ${notdir ${SRC_WITH_PATH}}
 
-obj/loader.o:boot/loader.S
-	$(NASM) -o $@ $< -I./boot -f elf
+OBJ_WITH_PATH			:= ${patsubst %.c,${DIR_OBJ}%.o,${SRC}}
+OBJ 					:= ${notdir ${OBJ_WITH_PATH}}
 
-obj/print.o: kernel/lib/print.c kernel/lib/print.h lib/io.h lib/stdint.h
-	$(CC) $< -o $@ $(INCLUDEPATH) $(CFLAGS)
+VPATH 					:= ${subst ${SPACE},:,${K_DIR_SRC}}:${DIR_BIN}
+vpath 		%.c 		${subst ${SPACE},:,${K_DIR_SRC}}
+vpath 		%.o			${DIR_OBJ}
+vpath 		%.d 		${DIR_OBJ}
+vpath 		%.h 		${K_DIR_INC}
 
-#-------------------bins-------------------
-bin/mbr.bin:boot/mbr.S
-	$(NASM) $< -o $@
 
-bin/loader.bin: obj/loader.o obj/boot.o
-	$(LD) -e _start $^  -o bin/loader.elf -Ttext 0x900 -N
-	$(OBJCOPY) -S -O binary bin/loader.elf bin/loader.bin
+kernel.bin:${OBJ:.o=.d} ${OBJ}
+	${LD} ${OBJ_WITH_PATH} -o ${DIR_BIN}$@ ${LDFLAGS}
 
-bin/kernel.bin:$(addprefix obj/,$(KOBJECTS))
-	$(LD) $^ -o bin/kernel.bin $(LDFLAGS)
+%.o:%.c
+	${CC} ${CFLAGS} -c -o ${DIR_OBJ}$@ $<
 
-$(OUT_DIR):
-	@mkdir $(OUT_DIR)
+%.d:%.c
+	${CC} ${CFLAGS} -MM -MT "$(subst .c,.o,${notdir $<}) $(subst .c,.d,${notdir $<})" -MF "$(subst .c,.d,${DIR_OBJ}${notdir $<})" $<
+	
+ifneq ($(MAKECMDGOALS),clean)
+ifneq ($(MAKECMDGOALS),dirs)
+ifneq ($(MAKECMDGOALS),bochs)
+-include ${OBJ_WITH_PATH:.o=.d}
+endif
+endif
+endif
 
-.PHONY:clean dirs cleanobj cleanbin img
-dirs: $(OUT_DIR)
-cleanobj:
-	@$(RM) obj
-cleanbin:
-	@$(RM) bin
-clean: cleanobj cleanbin
-img:bin/$(IMG)
+.PHONY:clean
+clean:
+	-rm -rf ${DIR_BIN}
+	-rm -rf ${DIR_OBJ}
+
+.PHONY:dirs
+dirs:${MKDIRS}
+${MKDIRS}:
+	@mkdir $@
+.PHONY:bochs
+bochs:all
+	${BOCHS} -f bochsrc
