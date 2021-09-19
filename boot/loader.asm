@@ -17,7 +17,6 @@ VIDEO_BASE_ADDR equ 0xb8000
 KERNEL_SPACE_ADDR equ 0xc0000000
 
 [bits 16]
-;SECTION LOADER vstart=LOADER_BASE_ADDR
 section .text
 global _start
 _start:

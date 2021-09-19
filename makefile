@@ -5,11 +5,11 @@ LOADER_BASE_ADDR 		:= 0x900
 IMG 					:= boot.img
 
 EXECUTABLES				:= i386-elf-gcc i386-elf-ld nasm dd bochs objcopy
-T := $(foreach exec,$(EXECUTABLES),\
-        $(if $(shell which $(exec)),,$(error "No $(exec) in PATH!")))
+T 						:= $(foreach exec,$(EXECUTABLES),\
+        				$(if $(shell which $(exec)),,$(error "No $(exec) in PATH!")))
 
-K_DIR_SRC 				:= ./lib/ ./kernel/ ./kernel/lib/
-K_DIR_INC 				:= ./lib/ ./kernel/lib/
+K_DIR_SRC 				:= ./lib/ ./kernel/ ./kernel/lib/ ./kernel/driver/ ./kernel/init/ ./kernel/debug/ ./kernel/mm/
+K_DIR_INC 				:= ./lib/ ./kernel/lib/	./kernel/driver/ ./kernel/init/	./kernel/debug/ ./kernel/mm/
 DIR_BIN					:= ./bin/
 DIR_OBJ					:= ./obj/
 DIR_OBJ_BOOT			:= ./obj/boot/
@@ -49,6 +49,8 @@ boot.img:mbr.bin loader.bin kernel.bin
 	dd if=bin/mbr.bin count=1 $(DDFLAGS)
 	dd if=bin/loader.bin count=4 seek=1 $(DDFLAGS)
 	dd if=bin/kernel.bin count=200 seek=5 $(DDFLAGS)
+	@echo "create bin/boot.img success!"
+	@echo "run 'make bochs' to start os!"
 
 # -------------------------------------------------------------------
 #  mbr
@@ -80,10 +82,14 @@ vpath 		%.c 		${subst ${SPACE},:,${K_DIR_SRC}}
 vpath 		%.o			${DIR_OBJ}
 vpath 		%.d 		${DIR_OBJ}
 vpath 		%.h 		${K_DIR_INC}
+vpath 		%.asm		./kernel/driver
 
 
-kernel.bin:${OBJ:.o=.d} ${OBJ}
-	${LD} ${OBJ_WITH_PATH} -o ${DIR_BIN}$@ ${LDFLAGS}
+kernel.bin:${OBJ:.o=.d} ${OBJ} vectors.o
+	${LD} ${OBJ_WITH_PATH} ${DIR_OBJ}vectors.o -o ${DIR_BIN}$@ ${LDFLAGS}
+
+vectors.o:vectors.asm
+	${NASM} -o ${DIR_OBJ}$@ -f elf $<
 
 %.o:%.c
 	${CC} ${CFLAGS} -c -o ${DIR_OBJ}$@ $<

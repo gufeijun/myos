@@ -9,8 +9,8 @@
 #define VGA_HEIGHT 25
 #define VGA_CHARACTORS ((VGA_WIDTH) * (VGA_HEIGHT))
 #define VIDEO_BASE_ADDR 0xb8000
-#define VIDEO_Nth_LINE_ADDR(n) (VIDEO_FIRST_LINE_ADDR + (n - 1) * VGA_WIDTH * 2)
 #define VIDEO_FIRST_LINE_ADDR VIDEO_BASE_ADDR
+#define VIDEO_Nth_LINE_ADDR(n) (VIDEO_FIRST_LINE_ADDR + (n - 1) * VGA_WIDTH * 2)
 #define VIDEO_LAST_LINE_ADDR (VIDEO_Nth_LINE_ADDR(VGA_HEIGHT))
 
 // in VGA text video mode, each page of sceen can hold
@@ -40,7 +40,7 @@ static inline void __scroll_lines(int n) {
     memset((void*)(VIDEO_LAST_LINE_ADDR - (n - 1) * VGA_WIDTH * 2), 0,
            n * 2 * VGA_WIDTH);
     // set the attribute of the first character fo last line(cursor), making
-    // cursor visible
+    // cursor visible.
     // *(uint8_t*)(VIDEO_LAST_LINE_ADDR + 1) = 0x07;
     __set_char(VGA_CHARACTORS - VGA_WIDTH, 0, 0x7);
 }
