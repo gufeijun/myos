@@ -35,4 +35,7 @@ int bitmap_find_next_zero_area(uint8_t* map, uint32_t map_size, uint32_t start,
 // is bit set in pos?
 int bitmap_test(uint8_t* map, uint32_t pos);
 
+int bitmap_scan_and_set(uint8_t* map, uint32_t map_size, uint32_t start,
+                        uint32_t len);
+
 #endif

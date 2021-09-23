@@ -95,3 +95,12 @@ int bitmap_find_next_zero_area(uint8_t* map, uint32_t map_size, uint32_t start,
     return -1;
 }
 
+int bitmap_scan_and_set(uint8_t* map, uint32_t map_size, uint32_t start,
+                        uint32_t len) {
+    int index = bitmap_find_next_zero_area(map, map_size, start, len);
+    if (index != -1) {
+        bitmap_set(map, index, len);
+    }
+    return index;
+}
+

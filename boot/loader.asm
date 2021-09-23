@@ -17,9 +17,53 @@ VIDEO_BASE_ADDR equ 0xb8000
 KERNEL_SPACE_ADDR equ 0xc0000000
 
 [bits 16]
+section .data
+	total_mem_size dd 0
+	ards_buf times 241 db 0
+	ards_nr dw 0
+
 section .text
 global _start
 _start:
+
+	xor ebx,ebx
+    mov edx, 0x534d4150
+    mov di, ards_buf
+
+.e820_mem_get_loop:
+    mov eax, 0x0000e820
+    mov ecx, 20
+    int 0x15
+    
+    jc .e820_mem_get_failed
+    
+    add di, cx
+    inc word [ards_nr]
+    cmp ebx, 0
+    jnz .e820_mem_get_loop
+
+    mov cx, [ards_nr]
+    mov ebx, ards_buf
+    xor edx, edx
+
+.find_max_mem_area:
+    mov eax, [ebx]
+    add eax, [ebx + 8]
+    add ebx, 20
+    cmp edx, eax
+    jge .next_ards
+    mov edx, eax
+
+.next_ards:
+    loop .find_max_mem_area
+    jmp .mem_get_ok
+
+.e820_mem_get_failed:
+	mov edx,0
+
+.mem_get_ok:
+    mov [total_mem_size], edx
+
 	;position the cursor on the fifth line
 	mov ah,2
 	mov bh,0
@@ -126,6 +170,7 @@ p_mode:
 	mov ebp,0xc009f000
 	;jump to c function boot. see boot/boot.c
 	extern boot
+	push dword [total_mem_size]
 	call boot
 
 ;si:字符串起始地址

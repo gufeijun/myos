@@ -1,5 +1,6 @@
 #include "elf.h"
 #include "io.h"
+#include "print.h"
 #include "stdint.h"
 #include "string.h"
 
@@ -10,6 +11,7 @@
 // mbr and loader requires 1 and 4 sector to store respectively
 #define KERNEL_BIN_SECTOR 5
 #define SECTOR_SIZE 512
+#define SYS_INFO_ADDR 0x900
 
 typedef void (*kentry)();
 
@@ -45,7 +47,7 @@ static inline void read_sectors(uintptr_t dst, int count, int start_sec) {
     }
 }
 
-void boot() {
+void boot(uint32_t total_mem_size) {
     struct elfhdr* ELFHDR = (struct elfhdr*)KERNEL_BIN_BASEADDR;
     // assuming our kernel is less than 100KB
     read_sectors((uintptr_t)KERNEL_BIN_BASEADDR, 200, KERNEL_BIN_SECTOR);
@@ -71,6 +73,9 @@ void boot() {
                (void*)((uintptr_t)ELFHDR + ph_start->p_offset),
                ph_start->p_memsz);
     }
+
+    // we will put all infos about hardware in 0x900
+    memcpy((void*)SYS_INFO_ADDR, &total_mem_size, sizeof(uint32_t));
 
     // asm volatile("jmp .");
     // finnaly we can enter the kernel

@@ -1,4 +1,6 @@
 #include "init.h"
+#include "memory.h"
+#include "stdint.h"
 
 int main() {
     init();

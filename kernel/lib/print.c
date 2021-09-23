@@ -102,6 +102,17 @@ void put_int(int num) {
     put_str(buf + i);
 }
 
+void put_uint(uint32_t num) {
+    char buf[11];
+    int i = 10;
+    while (num != 0) {
+        buf[--i] = num % 10 + '0';
+        num /= 10;
+    }
+    buf[10] = 0;
+    put_str(buf + i);
+}
+
 void printf(const char* fmt, ...) {
     va_list args;
     va_start(args, fmt);
@@ -116,6 +127,8 @@ loop:
         case 'd':
             put_int(va_arg(args, int));
             break;
+        case 'u':
+            put_uint(va_arg(args, unsigned int));
         case 'c':
             put_char(va_arg(args, int));
             break;

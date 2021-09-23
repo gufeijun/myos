@@ -4,6 +4,7 @@
 void put_char(char);
 void put_str(char*);
 void put_int(int);
+void put_uint(unsigned int);
 void printf(const char* format, ...);
 
 #endif
