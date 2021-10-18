@@ -9,7 +9,7 @@ struct vaddr_pool {
     uint32_t vaddr_start;  //虚拟地址的起始地址
 };
 
-enum pool_flags {
+enum pool_flag {
     PF_KERNEL,
     PF_USER,
 };
@@ -22,5 +22,6 @@ enum pool_flags {
 #define PG_US_U 4
 
 void mem_init();
+void* kmalloc_page(uint32_t pg_cnt);
 
 #endif

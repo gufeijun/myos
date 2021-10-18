@@ -8,8 +8,8 @@ EXECUTABLES				:= i386-elf-gcc i386-elf-ld nasm dd bochs objcopy
 T 						:= $(foreach exec,$(EXECUTABLES),\
         				$(if $(shell which $(exec)),,$(error "No $(exec) in PATH!")))
 
-K_DIR_SRC 				:= ./lib/ ./kernel/ ./kernel/lib/ ./kernel/driver/ ./kernel/init/ ./kernel/debug/ ./kernel/mm/
-K_DIR_INC 				:= ./lib/ ./kernel/lib/	./kernel/driver/ ./kernel/init/	./kernel/debug/ ./kernel/mm/
+K_DIR_SRC 				:= ./lib/ ./kernel/ ./kernel/lib/ ./kernel/driver/ ./kernel/init/ ./kernel/debug/ ./kernel/mm/ ./kernel/process/
+K_DIR_INC 				:= ./lib/ ./kernel/lib/	./kernel/driver/ ./kernel/init/	./kernel/debug/ ./kernel/mm/ ./kernel/process/
 DIR_BIN					:= ./bin/
 DIR_OBJ					:= ./obj/
 DIR_OBJ_BOOT			:= ./obj/boot/
